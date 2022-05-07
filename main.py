@@ -1,11 +1,18 @@
 import numpy as np
 import cv2 as cv
+import pyautogui
+import keyboard
 from matplotlib import pyplot as plt
 from matplotlib import colors
 
-def find_draw_area(image_path):
-    img = cv.imread(image_path)
-    img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+def take_screenshot():
+    image = pyautogui.screenshot()
+    image = cv.cvtColor(np.array(image), cv.COLOR_RGB2BGR)
+    return image
+
+def find_draw_area(image):
+    #img = cv.imread(image)
+    img = cv.cvtColor(image, cv.COLOR_BGR2RGB)
     blur = cv.medianBlur(img,9)
 
     light_background_hsv = (100,180,135)
@@ -38,8 +45,13 @@ def find_draw_area(image_path):
     cv.drawContours(img,[draw_area],0,(0,255,0),3)
 
     img = cv.cvtColor(img, cv.COLOR_RGB2BGR)
-    cv.imshow("bounded play area", img)
+    cv.imwrite("bounded play area.png", img)
     cv.waitKey(0)
 
+def find_current_play_area():
+    screenshot = take_screenshot()
+    find_draw_area(screenshot)
+
 if __name__ == '__main__':
-    find_draw_area('test1.png')
+    keyboard.add_hotkey('ctrl+alt+p', find_current_play_area)
+    keyboard.wait('ctrl+alt+q')
