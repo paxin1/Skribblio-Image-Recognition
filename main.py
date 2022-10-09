@@ -1,57 +1,46 @@
-import numpy as np
-import cv2 as cv
-import pyautogui
-import keyboard
-from matplotlib import pyplot as plt
-from matplotlib import colors
+import play_area
+from play_area import *
+import cnn
+from cnn import *
+import pickle
 
-def take_screenshot():
-    image = pyautogui.screenshot()
-    image = cv.cvtColor(np.array(image), cv.COLOR_RGB2BGR)
-    return image
+def prepare_img(file):
+    img = cv.imread(file)
+    resized_img = cv.resize(img, (28,28))
+    resized_gray = np.expand_dims(cv.cvtColor(resized_img, cv.COLOR_BGR2GRAY), axis=2)
+    predict_img = np.expand_dims(resized_gray, axis=0)
+    return predict_img
 
-def find_draw_area(image):
-    #img = cv.imread(image)
-    img = cv.cvtColor(image, cv.COLOR_BGR2RGB)
-    blur = cv.medianBlur(img,9)
+def predict(model, img):
+    with open('label_dict.pkl', 'rb') as f:
+        label_dict = pickle.load(f)
+    predictions = model.predict(img)
+    score = tf.nn.softmax(predictions[0]).numpy()
+    top_3 = score.argsort()[-3:][::-1]
+    print(
+        "This image is likely {} with a {:.2f} percent confidence. Next 2 guesses are {} with {:.2f} percent confidence and {} with {:.2f} percent confidence."
+        .format(label_dict[top_3[0]], 100 * score[top_3[0]], label_dict[top_3[1]], 100 * score[top_3[1]], label_dict[top_3[2]], 100 * score[top_3[2]])
+    )
 
-    light_background_hsv = (100,180,135)
-    dark_background_hsv = (120,230,155)
-    hsv_blur =  cv.cvtColor(blur, cv.COLOR_RGB2HSV)
-
-    background_mask = cv.inRange(hsv_blur, light_background_hsv, dark_background_hsv)
-    inverted_mask = cv.bitwise_not(background_mask)
-
-    result = cv.bitwise_and(blur, blur, mask=background_mask)
-
-    img_gray = cv.cvtColor(result, cv.COLOR_BGR2GRAY)
-    img_gray_blur = cv.medianBlur(img_gray, 15)
-    #cv.imwrite("image.png", img_blur)
-    thresh = cv.adaptiveThreshold(img_gray_blur, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2)
-
-    contours, hierarchy = cv.findContours(thresh, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE)
-
-    img_h, img_w, _ = img.shape
-    upper_area_bound = img_h * img_w / 2
-    draw_area = contours[0]
-    max_area = 0
-
-    for contour in contours:
-        area = cv.contourArea(contour)
-        if area > 20000 and area > max_area and area < upper_area_bound:
-            draw_area = contour
-            max_area = area
-    
-    cv.drawContours(img,[draw_area],0,(0,255,0),3)
-
-    img = cv.cvtColor(img, cv.COLOR_RGB2BGR)
-    cv.imwrite("bounded play area.png", img)
-    cv.waitKey(0)
-
-def find_current_play_area():
-    screenshot = take_screenshot()
-    find_draw_area(screenshot)
+def run_prediction():
+    play_area.find_current_play_area()
+    img = prepare_img('drawing.png')
+    predict(model,img)
 
 if __name__ == '__main__':
-    keyboard.add_hotkey('ctrl+alt+p', find_current_play_area)
+    keyboard.add_hotkey('ctrl+alt+p', run_prediction)
+    if not os.path.exists('model'):
+        print('Creating new model')
+        model = cnn.create_model()
+        if not os.path.exists('dataset_labels.npy'):
+            print('Generating dataset')
+            label_dict = cnn.generate_dataset()
+            with open('label_dict.pkl','wb') as f:
+                pickle.dump(label_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
+        print('Training model')
+        model = cnn.train_data(model, 'dataset.npy', 'dataset_labels.npy')
+    else:
+        model = models.load_model('model')
+        print('Loaded model from data')
+    print('Press ctrl+alt+p to predict drawing, or press ctrl+alt+q to quit')
     keyboard.wait('ctrl+alt+q')
