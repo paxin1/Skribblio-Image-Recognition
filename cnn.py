@@ -16,11 +16,13 @@ def generate_dataset():
     dataset_list = []
     dataset_labels_list = []
     for filename in os.listdir(data_dir):
+        if i>15:
+            break
         file = os.path.join(data_dir, filename)
         data = np.load(file)
         image_dim = int(math.sqrt(data.shape[1]))
         data_2d = np.reshape(data, (data.shape[0], image_dim, image_dim))
-        data_gray = np.expand_dims(data_2d, axis=3)[:50]
+        data_gray = np.expand_dims(data_2d, axis=3)[:250]
         labels = np.full(data_gray.shape[0], i)
         dataset_list.append(data_gray)
         dataset_labels_list.append(labels)
@@ -63,10 +65,10 @@ def create_model():
         layers.Dropout(0.2),
         layers.Dense(64, activation='relu'),
         layers.Dropout(0.2),
-        layers.Dense(file_count, activation='softmax')
+        layers.Dense(16, activation='softmax')
     ])
 
-    model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer=optimizers.RMSprop(learning_rate=0.01), metrics=['accuracy'])
+    model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer=optimizers.RMSprop(learning_rate=0.005), metrics=['accuracy'])
     return model
 
 def train_data(model, data_file, label_file):
