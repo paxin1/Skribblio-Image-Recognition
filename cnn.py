@@ -26,12 +26,8 @@ def generate_dataset():
         labels = np.full(data_gray.shape[0], i)
         dataset_list.append(data_gray)
         dataset_labels_list.append(labels)
-        #labels = utils.to_categorical(labels, len(test_files))
-        #X_train, X_test, Y_train, Y_test = train_test_split(data_gray, labels, test_size=0.3, random_state=42)
         label_dict[i] = os.path.splitext(filename)[0]
         i += 1
-
-        #model.fit(X_train, Y_train, epochs=10, validation_data=(X_test, Y_test), shuffle=True)
     dataset = np.vstack(tuple(dataset_list))
     dataset_labels = np.concatenate(tuple(dataset_labels_list))
     dataset, dataset_labels = shuffle(dataset, dataset_labels, random_state=0)
